@@ -128,7 +128,7 @@ def parse_image(contents):
     # Ограничение размера изображения для экономии памяти
     MAX_SIZE = (1200, 1200)
     if image.size[0] > MAX_SIZE[0] or image.size[1] > MAX_SIZE[1]:
-        image.thumbnail(MAX_SIZE, Image.ANTIALIAS)
+        image.thumbnail(MAX_SIZE, Image.Resampling.LANCZOS)
     arr = np.array(image)
     return arr
 
