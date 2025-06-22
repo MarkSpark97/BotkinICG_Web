@@ -468,10 +468,7 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
 
     return fig, summary, bar_fig, download, shapes, img_np_list, heatmap_fig, heatmap_style, analysis_txt, analysis_fig, download_pdf, violin_fig, hist_fig
 
-app = dash.Dash(__name__)
 server = app.server
-
-# --- твой layout и callbacks ---
 
 if __name__ == '__main__':
     app.run(debug=True)
