@@ -470,3 +470,5 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+server = app.server
