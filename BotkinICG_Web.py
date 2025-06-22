@@ -371,8 +371,14 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
                 if roi.size > 0:
                     roi_values.append(roi)
                     roi_labels.append(f"ROI_{i+1}")
+        # Ограничение по количеству точек внутри ROI только для отображения (sampling)
+        MAX_POINTS = 5000
         for i, values in enumerate(roi_values):
-            violin_fig.add_trace(go.Violin(y=values, name=roi_labels[i], box_visible=True, meanline_visible=True))
+            if len(values) > MAX_POINTS:
+                sampled = np.random.choice(values, MAX_POINTS, replace=False)
+            else:
+                sampled = values
+            violin_fig.add_trace(go.Violin(y=sampled, name=roi_labels[i], box_visible=True, meanline_visible=True))
         violin_fig.update_layout(
             title="Violin plot по ROI (зелёный канал)",
             font_family="Montserrat, sans-serif",
@@ -466,8 +472,8 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
                 v if len(v) <= MAX_POINTS else np.random.choice(v, MAX_POINTS, replace=False)
                 for v in roi_data
             ]
-            # Проверка лимитов
-            if any(len(v) > MAX_POINTS for v in roi_values) or len(roi_values) > MAX_ROI:
+            # Проверка лимита только по количеству ROI
+            if len(roi_values) > MAX_ROI:
                 plt.close('all')
                 import gc; gc.collect()
                 download_pdf = dict(
@@ -476,7 +482,7 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
                     base64=False
                 )
                 return fig, summary, bar_fig, download, shapes, img_np_list, heatmap_fig, heatmap_style, analysis_txt, analysis_fig, download_pdf, violin_fig, hist_fig
-            # Обработка ошибок визуализации: если данных слишком много или ошибка построения
+            # Обработка ошибок визуализации: если ошибка построения
             try:
                 parts = ax5_.violinplot(roi_data, showmeans=True, showmedians=True)
             except Exception as e:
