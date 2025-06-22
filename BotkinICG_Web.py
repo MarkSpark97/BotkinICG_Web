@@ -444,9 +444,24 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
             ax4_.axis("off")
             pdf.savefig(fig4_)
             plt.close(fig4_)
-            # 5: Violin plot
+            # 5: Violin plot (memory-safe, log data size, handle errors)
             fig5_, ax5_ = plt.subplots(figsize=(7, 5))
-            parts = ax5_.violinplot([vals.flatten() for vals in roi_values], showmeans=True, showmedians=True)
+            # Логирование размера каждого массива
+            print("len(roi_values):", [len(v.flatten()) for v in roi_values])
+            # Ограничение размера каждого массива до MAX_POINTS
+            MAX_POINTS = 20000
+            roi_data = [vals.flatten() for vals in roi_values]
+            roi_data = [
+                v if len(v) <= MAX_POINTS else np.random.choice(v, MAX_POINTS, replace=False)
+                for v in roi_data
+            ]
+            try:
+                parts = ax5_.violinplot(roi_data, showmeans=True, showmedians=True)
+            except Exception as e:
+                print("Ошибка построения violinplot:", str(e))
+                ax5_.text(0.5, 0.5, 'Ошибка визуализации\nслишком много данных',
+                          horizontalalignment='center', verticalalignment='center',
+                          transform=ax5_.transAxes)
             ax5_.set_title("Violin plot по ROI (зелёный канал)")
             ax5_.set_xticks(np.arange(1, len(roi_labels)+1))
             ax5_.set_xticklabels(roi_labels)
