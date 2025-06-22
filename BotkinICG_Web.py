@@ -125,6 +125,10 @@ def parse_image(contents):
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
     image = Image.open(io.BytesIO(decoded)).convert("RGB")
+    # Ограничение размера изображения для экономии памяти
+    MAX_SIZE = (1200, 1200)
+    if image.size[0] > MAX_SIZE[0] or image.size[1] > MAX_SIZE[1]:
+        image.thumbnail(MAX_SIZE, Image.ANTIALIAS)
     arr = np.array(image)
     return arr
 
@@ -418,12 +422,14 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
             ax.axis("off")
             pdf.savefig(fig_)
             plt.close(fig_)
+            import gc; gc.collect()
             # 2: Boxplot
             fig2_, ax2_ = plt.subplots(figsize=(6, 4))
             ax2_.boxplot(vals)
             ax2_.set_title("Boxplot по ROI")
             pdf.savefig(fig2_)
             plt.close(fig2_)
+            import gc; gc.collect()
             # 3: Таблица с SD
             df = pd.DataFrame(stats).round(2)
             n_rows, n_cols = df.shape
@@ -435,6 +441,7 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
             table.scale(1.2, 1.5)
             pdf.savefig(fig3_)
             plt.close(fig3_)
+            import gc; gc.collect()
             # 4: Тепловая карта
             heatmap_np = cv2.applyColorMap(cv2.normalize(img_np[:, :, 1], None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8), cv2.COLORMAP_JET)
             heatmap_rgb = cv2.cvtColor(heatmap_np, cv2.COLOR_BGR2RGB)
@@ -444,17 +451,32 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
             ax4_.axis("off")
             pdf.savefig(fig4_)
             plt.close(fig4_)
-            # 5: Violin plot (memory-safe, log data size, handle errors)
+            import gc; gc.collect()
+            # 5: Violin plot по ROI (зелёный канал)
+            # --- Violin plot: логирование размера данных, ограничение размера массива, обработка ошибок, лимит MAX_POINTS ---
             fig5_, ax5_ = plt.subplots(figsize=(7, 5))
-            # Логирование размера каждого массива
+            # Логирование размера данных для violin plot
             print("len(roi_values):", [len(v.flatten()) for v in roi_values])
-            # Ограничение размера каждого массива до MAX_POINTS
-            MAX_POINTS = 20000
+            # Назначение лимита MAX_POINTS для экономии памяти и предотвращения переполнения
+            MAX_POINTS = 5000  # Более строгий лимит по точкам
+            MAX_ROI = 8        # Максимальное число ROI для PDF-отчёта
+            # Ограничение размера массива для экономии памяти:
             roi_data = [vals.flatten() for vals in roi_values]
             roi_data = [
                 v if len(v) <= MAX_POINTS else np.random.choice(v, MAX_POINTS, replace=False)
                 for v in roi_data
             ]
+            # Проверка лимитов
+            if any(len(v) > MAX_POINTS for v in roi_values) or len(roi_values) > MAX_ROI:
+                plt.close('all')
+                import gc; gc.collect()
+                download_pdf = dict(
+                    content=None,
+                    filename="error.txt",
+                    base64=False
+                )
+                return fig, summary, bar_fig, download, shapes, img_np_list, heatmap_fig, heatmap_style, analysis_txt, analysis_fig, download_pdf, violin_fig, hist_fig
+            # Обработка ошибок визуализации: если данных слишком много или ошибка построения
             try:
                 parts = ax5_.violinplot(roi_data, showmeans=True, showmedians=True)
             except Exception as e:
@@ -467,12 +489,14 @@ def update_output(contents, relayoutData, n_csv, n_auto, n_heat, n_clear, n_pdf,
             ax5_.set_xticklabels(roi_labels)
             pdf.savefig(fig5_)
             plt.close(fig5_)
+            import gc; gc.collect()
             # 6: Гистограмма по всему изображению
             fig6_, ax6_ = plt.subplots(figsize=(7, 5))
             ax6_.hist(green_vals, bins=50, color="#003366")
             ax6_.set_title("Гистограмма интенсивности по всему изображению (зелёный канал)")
             pdf.savefig(fig6_)
             plt.close(fig6_)
+            import gc; gc.collect()
         pdf_bytes.seek(0)
         b64pdf = base64.b64encode(pdf_bytes.read()).decode()
         download_pdf = dict(
