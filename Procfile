@@ -1,1 +1,1 @@
-web: gunicorn botkin_icg_web:server
+web: gunicorn botkinICG_Web:server
